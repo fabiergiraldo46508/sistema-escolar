@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema Escolar - Módulo de Gestión de Estudiantes. Registro, consulta y administración en tiempo real.">
+    <title>Sistema Escolar | Gestión de Estudiantes</title>
+    <!-- Google Fonts: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Notificaciones Toast Flotantes -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Modal de confirmación para eliminar -->
+    <div id="delete-modal" class="modal-backdrop hidden">
+        <div class="modal-box">
+            <div class="modal-icon-warning">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3>¿Eliminar estudiante?</h3>
+            <p id="modal-student-name">Esta acción eliminará al estudiante del sistema y no se puede deshacer.</p>
+            <div class="modal-actions">
+                <button type="button" id="btn-cancel-delete" class="btn-secondary">Cancelar</button>
+                <button type="button" id="btn-confirm-delete" class="btn-danger">
+                    <i class="fa-solid fa-trash-can"></i> Sí, eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor Principal -->
+    <div class="container">
+        <!-- Header Principal -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo-area">
+                    <div class="logo-icon">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <div>
+                        <h1>Sistema Escolar</h1>
+                        <span class="badge-module"><i class="fa-solid fa-user-graduate"></i> Módulo de Estudiantes</span>
+                    </div>
+                </div>
+                <div class="server-status-pill" id="server-status" title="Estado de la conexión con el backend">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Comprobando servidor...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Métricas Rápidas -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon icon-blue">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Estudiantes</span>
+                    <span class="stat-number" id="total-count">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-emerald">
+                    <i class="fa-solid fa-id-card"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Registros Activos</span>
+                    <span class="stat-number" id="active-count">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-purple">
+                    <i class="fa-solid fa-server"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">API Backend</span>
+                    <span class="stat-badge" id="backend-status-badge">Flask + PostgreSQL</span>
+                </div>
+            </div>
+        </section>
+
+        <main class="main-layout">
+            <!-- Formulario para registrar estudiante -->
+            <div class="card form-card">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="card-icon">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </div>
+                        <div>
+                            <h2>Registrar Nuevo Estudiante</h2>
+                            <p class="card-subtitle">Ingresa la información básica para dar de alta al estudiante</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="student-form" autocomplete="off">
+                    <div class="form-group">
+                        <label for="nombre">
+                            <i class="fa-regular fa-user"></i> Nombre Completo
+                        </label>
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="nombre" 
+                                name="nombre" 
+                                required 
+                                placeholder="Ej. Juan Pérez González"
+                                minlength="3"
+                            >
+                        </div>
+                        <span class="form-hint">Nombres y apellidos completos</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="documento">
+                            <i class="fa-regular fa-id-badge"></i> Documento de Identidad
+                        </label>
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="documento" 
+                                name="documento" 
+                                required 
+                                placeholder="Ej. 1002345678"
+                                minlength="4"
+                            >
+                        </div>
+                        <span class="form-hint">Cédula, T.I. o número de identificación</span>
+                    </div>
+
+                    <button type="submit" id="btn-submit" class="btn-primary">
+                        <span class="btn-text"><i class="fa-solid fa-floppy-disk"></i> Guardar Estudiante</span>
+                        <div class="spinner hidden" id="submit-spinner"></div>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Tabla de estudiantes -->
+            <div class="card table-card">
+                <div class="card-header table-header-flex">
+                    <div class="card-title-group">
+                        <div class="card-icon list-icon">
+                            <i class="fa-solid fa-table-list"></i>
+                        </div>
+                        <div>
+                            <h2>Lista de Estudiantes</h2>
+                            <p class="card-subtitle">Estudiantes matriculados en la base de datos</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Barra de búsqueda y recarga -->
+                    <div class="table-tools">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input 
+                                type="text" 
+                                id="search-input" 
+                                placeholder="Buscar por nombre o documento..." 
+                            >
+                            <button type="button" id="clear-search" class="clear-btn hidden" title="Limpiar búsqueda">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <button type="button" id="btn-reload" class="btn-icon" title="Recargar lista">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="students-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">ID</th>
+                                <th>Nombre Completo</th>
+                                <th>Documento</th>
+                                <th style="width: 140px; text-align: center;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="estudiantes-list">
+                            <!-- Se llena dinámicamente con JavaScript -->
+                        </tbody>
+                    </table>
+
+                    <!-- Estado de Carga -->
+                    <div id="table-loader" class="table-state hidden">
+                        <div class="loading-spinner"></div>
+                        <p>Cargando lista de estudiantes...</p>
+                    </div>
+
+                    <!-- Estado Vacío -->
+                    <div id="empty-state" class="table-state hidden">
+                        <div class="empty-icon">
+                            <i class="fa-solid fa-folder-open"></i>
+                        </div>
+                        <h3>No hay estudiantes registrados</h3>
+                        <p>Utiliza el formulario de la izquierda para registrar el primer estudiante.</p>
+                    </div>
+
+                    <!-- Estado Sin Resultados de Búsqueda -->
+                    <div id="no-search-results" class="table-state hidden">
+                        <div class="empty-icon">
+                            <i class="fa-solid fa-user-slash"></i>
+                        </div>
+                        <h3>No se encontraron coincidencias</h3>
+                        <p>Intenta con otro término de búsqueda o limpia el filtro.</p>
+                    </div>
+                </div>
+
+                <!-- Footer de la tabla -->
+                <div class="table-footer">
+                    <span id="showing-count" class="footer-counter">Mostrando 0 registros</span>
+                </div>
+            </div>
+        </main>
+
+        <footer class="app-footer">
+            <p>Sistema de Gestión Escolar &bull; Conectado a API Flask en el puerto 5000</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
