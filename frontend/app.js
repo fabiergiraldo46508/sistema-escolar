@@ -1,92 +1,210 @@
 /**
- * SISTEMA ESCOLAR - GESTIÓN DE ESTUDIANTES
- * Lógica de conexión con la API Flask
+ * SISTEMA ESCOLAR - PANEL DE ADMINISTRACIÓN
+ * Gestión de Estudiantes y Profesores
  */
 
+// ==========================================
+// CONFIGURACIÓN DE APIS Y ESTADO GLOBAL
+// ==========================================
 const API_BASE_URL = (window.location.origin && window.location.origin.startsWith('http')) 
     ? window.location.origin 
     : 'http://127.0.0.1:5000';
+
 const API_ESTUDIANTES = `${API_BASE_URL}/api/estudiantes`;
+const API_PROFESORES = `${API_BASE_URL}/api/profesores`;
 const API_HEALTH = `${API_BASE_URL}/api/health`;
 
-// Estado de la aplicación
+// Estado de datos
 let estudiantes = [];
-let studentIdToDelete = null;
+let profesores = [];
+let deleteTarget = null; // { type: 'estudiante'|'profesor', id: number, name: string }
 
-// Elementos del DOM
-const form = document.getElementById('student-form');
-const inputNombre = document.getElementById('nombre');
-const inputDocumento = document.getElementById('documento');
-const btnSubmit = document.getElementById('btn-submit');
-const submitSpinner = document.getElementById('submit-spinner');
-const btnSubmitText = btnSubmit.querySelector('.btn-text');
+// ==========================================
+// ELEMENTOS DEL DOM
+// ==========================================
 
-const tableBody = document.getElementById('estudiantes-list');
-const tableLoader = document.getElementById('table-loader');
-const emptyState = document.getElementById('empty-state');
-const noSearchResults = document.getElementById('no-search-results');
+// Navegación y Vistas
+const navEstudiantes = document.getElementById('nav-estudiantes');
+const navProfesores = document.getElementById('nav-profesores');
+const viewEstudiantes = document.getElementById('view-estudiantes');
+const viewProfesores = document.getElementById('view-profesores');
+const currentViewTitle = document.getElementById('current-view-title');
+const currentViewSubtitle = document.getElementById('current-view-subtitle');
 
-const searchInput = document.getElementById('search-input');
-const clearSearchBtn = document.getElementById('clear-search');
-const btnReload = document.getElementById('btn-reload');
+// Menú Móvil
+const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
 
-const totalCountEl = document.getElementById('total-count');
-const activeCountEl = document.getElementById('active-count');
-const showingCountEl = document.getElementById('showing-count');
+// KPIs y Badges
+const kpiTotalEstudiantes = document.getElementById('kpi-total-estudiantes');
+const kpiTotalProfesores = document.getElementById('kpi-total-profesores');
+const kpiTotalEspecialidades = document.getElementById('kpi-total-especialidades');
+const kpiDbType = document.getElementById('kpi-db-type');
+const badgeCountEstudiantes = document.getElementById('badge-count-estudiantes');
+const badgeCountProfesores = document.getElementById('badge-count-profesores');
 const serverStatusEl = document.getElementById('server-status');
+const currentDateEl = document.getElementById('current-date');
 
-// Modal de eliminación
+// Formulario Estudiantes
+const studentForm = document.getElementById('student-form');
+const inputStudentNombre = document.getElementById('student-nombre');
+const inputStudentDocumento = document.getElementById('student-documento');
+const btnSubmitStudent = document.getElementById('btn-submit-student');
+const studentSpinner = document.getElementById('student-spinner');
+
+// Tabla Estudiantes
+const studentsTableBody = document.getElementById('students-table-body');
+const studentsLoader = document.getElementById('students-loader');
+const studentsEmpty = document.getElementById('students-empty');
+const studentsNoResults = document.getElementById('students-no-results');
+const studentSearchInput = document.getElementById('student-search-input');
+const studentClearSearch = document.getElementById('student-clear-search');
+const btnReloadStudents = document.getElementById('btn-reload-students');
+const studentsCounter = document.getElementById('students-counter');
+
+// Formulario Profesores
+const teacherForm = document.getElementById('teacher-form');
+const inputTeacherNombre = document.getElementById('teacher-nombre');
+const inputTeacherDocumento = document.getElementById('teacher-documento');
+const inputTeacherAsignatura = document.getElementById('teacher-asignatura');
+const inputTeacherEmail = document.getElementById('teacher-email');
+const btnSubmitTeacher = document.getElementById('btn-submit-teacher');
+const teacherSpinner = document.getElementById('teacher-spinner');
+
+// Tabla Profesores
+const teachersTableBody = document.getElementById('teachers-table-body');
+const teachersLoader = document.getElementById('teachers-loader');
+const teachersEmpty = document.getElementById('teachers-empty');
+const teachersNoResults = document.getElementById('teachers-no-results');
+const teacherSearchInput = document.getElementById('teacher-search-input');
+const teacherClearSearch = document.getElementById('teacher-clear-search');
+const btnReloadTeachers = document.getElementById('btn-reload-teachers');
+const teachersCounter = document.getElementById('teachers-counter');
+
+// Modal de Eliminación
 const deleteModal = document.getElementById('delete-modal');
-const modalStudentName = document.getElementById('modal-student-name');
+const modalTitle = document.getElementById('modal-title');
+const modalDeleteMessage = document.getElementById('modal-delete-message');
 const btnCancelDelete = document.getElementById('btn-cancel-delete');
 const btnConfirmDelete = document.getElementById('btn-confirm-delete');
 
-// Toast Container
+// Toasts
 const toastContainer = document.getElementById('toast-container');
 
-/**
- * Inicialización al cargar la página
- */
+// ==========================================
+// INICIALIZACIÓN
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
+    initDateDisplay();
+    setupNavigation();
+    setupEventListeners();
+    
+    // Carga inicial
     checkServerHealth();
     cargarEstudiantes();
-    setupEventListeners();
+    cargarProfesores();
 });
 
 /**
- * Configurar eventos del usuario
+ * Muestra la fecha formateada en la barra superior
  */
+function initDateDisplay() {
+    if (!currentDateEl) return;
+    const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+    const now = new Date();
+    currentDateEl.textContent = now.toLocaleDateString('es-ES', options);
+}
+
+// ==========================================
+// NAVEGACIÓN ENTRE MÓDULOS
+// ==========================================
+function setupNavigation() {
+    navEstudiantes.addEventListener('click', () => switchModule('estudiantes'));
+    navProfesores.addEventListener('click', () => switchModule('profesores'));
+
+    // Control del menú lateral en móviles
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', () => toggleMobileSidebar(true));
+    }
+    if (sidebarCloseBtn) {
+        sidebarCloseBtn.addEventListener('click', () => toggleMobileSidebar(false));
+    }
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', () => toggleMobileSidebar(false));
+    }
+}
+
+function toggleMobileSidebar(open) {
+    if (open) {
+        sidebar.classList.add('open');
+        sidebarOverlay.classList.remove('hidden');
+    } else {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.add('hidden');
+    }
+}
+
+function switchModule(moduleName) {
+    if (moduleName === 'estudiantes') {
+        navEstudiantes.classList.add('active');
+        navProfesores.classList.remove('active');
+        viewEstudiantes.classList.add('active');
+        viewProfesores.classList.remove('active');
+        currentViewTitle.textContent = 'Módulo de Estudiantes';
+        currentViewSubtitle.textContent = 'Administración de matrículas y alumnos';
+    } else if (moduleName === 'profesores') {
+        navProfesores.classList.add('active');
+        navEstudiantes.classList.remove('active');
+        viewProfesores.classList.add('active');
+        viewEstudiantes.classList.remove('active');
+        currentViewTitle.textContent = 'Módulo de Profesores';
+        currentViewSubtitle.textContent = 'Cuerpo docente y especialidades académicas';
+    }
+    toggleMobileSidebar(false);
+}
+
+// ==========================================
+// EVENT LISTENERS GENERALES
+// ==========================================
 function setupEventListeners() {
-    // Envío del formulario (Crear estudiante)
-    form.addEventListener('submit', handleFormSubmit);
-
-    // Búsqueda en tiempo real
-    searchInput.addEventListener('input', handleSearch);
-    clearSearchBtn.addEventListener('click', () => {
-        searchInput.value = '';
-        clearSearchBtn.classList.add('hidden');
-        renderTable(estudiantes);
+    // Estudiantes Form & Search
+    studentForm.addEventListener('submit', handleStudentSubmit);
+    studentSearchInput.addEventListener('input', handleStudentSearch);
+    studentClearSearch.addEventListener('click', () => {
+        studentSearchInput.value = '';
+        studentClearSearch.classList.add('hidden');
+        renderEstudiantesTable(estudiantes);
     });
-
-    // Botón de recarga manual
-    btnReload.addEventListener('click', () => {
-        btnReload.classList.add('spinning');
-        checkServerHealth();
+    btnReloadStudents.addEventListener('click', () => {
+        btnReloadStudents.classList.add('spinning');
         cargarEstudiantes().finally(() => {
-            setTimeout(() => btnReload.classList.remove('spinning'), 500);
+            setTimeout(() => btnReloadStudents.classList.remove('spinning'), 500);
         });
     });
 
-    // Eventos del modal de confirmación
-    btnCancelDelete.addEventListener('click', closeDeleteModal);
-    btnConfirmDelete.addEventListener('click', confirmDeleteEstudiante);
+    // Profesores Form & Search
+    teacherForm.addEventListener('submit', handleTeacherSubmit);
+    teacherSearchInput.addEventListener('input', handleTeacherSearch);
+    teacherClearSearch.addEventListener('click', () => {
+        teacherSearchInput.value = '';
+        teacherClearSearch.classList.add('hidden');
+        renderProfesoresTable(profesores);
+    });
+    btnReloadTeachers.addEventListener('click', () => {
+        btnReloadTeachers.classList.add('spinning');
+        cargarProfesores().finally(() => {
+            setTimeout(() => btnReloadTeachers.classList.remove('spinning'), 500);
+        });
+    });
 
-    // Cerrar modal al hacer clic en el fondo
+    // Modal de Confirmación
+    btnCancelDelete.addEventListener('click', closeDeleteModal);
+    btnConfirmDelete.addEventListener('click', confirmDeleteAction);
     deleteModal.addEventListener('click', (e) => {
         if (e.target === deleteModal) closeDeleteModal();
     });
-
-    // Cerrar modal con la tecla Escape
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !deleteModal.classList.contains('hidden')) {
             closeDeleteModal();
@@ -94,311 +212,453 @@ function setupEventListeners() {
     });
 }
 
-/**
- * Comprobar estado de la conexión con el servidor
- */
+// ==========================================
+// COMPROBAR SALUD DEL SERVIDOR
+// ==========================================
 async function checkServerHealth() {
     const dot = serverStatusEl.querySelector('.status-dot');
     const text = serverStatusEl.querySelector('.status-text');
 
     try {
-        const response = await fetch(API_HEALTH, { method: 'GET' });
-        if (response.ok) {
-            const data = await response.json();
+        const res = await fetch(API_HEALTH);
+        if (res.ok) {
+            const data = await res.json();
             serverStatusEl.className = 'server-status-pill online';
-            text.textContent = `Servidor en línea (${data.base_de_datos || 'Puerto 5000'})`;
+            text.textContent = 'En Línea';
+            kpiDbType.textContent = data.base_de_datos || 'Conectado';
         } else {
             throw new Error('Servidor no disponible');
         }
-    } catch (error) {
+    } catch (e) {
         serverStatusEl.className = 'server-status-pill offline';
-        text.textContent = 'Sin conexión con el backend';
+        text.textContent = 'Sin conexión';
+        kpiDbType.textContent = 'Desconectado';
     }
 }
 
-/**
- * Obtener lista de estudiantes desde la API
- */
+// ==========================================
+// MÓDULO: ESTUDIANTES (CRUD)
+// ==========================================
 async function cargarEstudiantes() {
-    showLoading(true);
-
+    showStudentsLoading(true);
     try {
-        const response = await fetch(API_ESTUDIANTES);
-        if (!response.ok) {
-            throw new Error(`Error en el servidor: ${response.status}`);
-        }
-
-        estudiantes = await response.json();
-        renderTable(estudiantes);
-        updateCounters(estudiantes.length, estudiantes.length);
+        const res = await fetch(API_ESTUDIANTES);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        estudiantes = await res.json();
+        renderEstudiantesTable(estudiantes);
+        updateKPIs();
     } catch (error) {
         console.error('Error al cargar estudiantes:', error);
-        showToast('No se pudo conectar con el servidor. Asegúrate de que app.py esté corriendo.', 'error');
-        renderTable([]);
+        showToast('No se pudo conectar con el servidor para obtener estudiantes.', 'error');
+        renderEstudiantesTable([]);
     } finally {
-        showLoading(false);
+        showStudentsLoading(false);
     }
 }
 
-/**
- * Renderizar la tabla de estudiantes
- */
-function renderTable(list) {
-    tableBody.innerHTML = '';
+function renderEstudiantesTable(list) {
+    studentsTableBody.innerHTML = '';
 
-    // Manejo de estados vacíos
     if (estudiantes.length === 0) {
-        emptyState.classList.remove('hidden');
-        noSearchResults.classList.add('hidden');
-        showingCountEl.textContent = 'Mostrando 0 registros';
+        studentsEmpty.classList.remove('hidden');
+        studentsNoResults.classList.add('hidden');
+        studentsCounter.textContent = 'Mostrando 0 registros';
         return;
     }
 
     if (list.length === 0) {
-        emptyState.classList.add('hidden');
-        noSearchResults.classList.remove('hidden');
-        showingCountEl.textContent = '0 resultados coincidentes';
+        studentsEmpty.classList.add('hidden');
+        studentsNoResults.classList.remove('hidden');
+        studentsCounter.textContent = '0 resultados encontrados';
         return;
     }
 
-    emptyState.classList.add('hidden');
-    noSearchResults.classList.add('hidden');
-    showingCountEl.textContent = `Mostrando ${list.length} de ${estudiantes.length} estudiante(s)`;
+    studentsEmpty.classList.add('hidden');
+    studentsNoResults.classList.add('hidden');
+    studentsCounter.textContent = `Mostrando ${list.length} de ${estudiantes.length} estudiante(s)`;
 
-    // Construir filas
     list.forEach(est => {
         const tr = document.createElement('tr');
-
-        // Generar iniciales para avatar
-        const initials = getInitials(est.nombre || 'E');
-
+        const initials = getInitials(est.nombre);
+        
         tr.innerHTML = `
-            <td><span class="student-id-badge">#${est.id}</span></td>
+            <td><span class="id-pill">#${est.id}</span></td>
             <td>
-                <div class="student-name-cell">
-                    <span class="avatar-bubble">${initials}</span>
+                <div class="user-cell">
+                    <span class="user-avatar">${initials}</span>
                     <span>${escapeHTML(est.nombre)}</span>
                 </div>
             </td>
             <td>
-                <span class="student-doc-badge">
-                    <i class="fa-regular fa-address-card"></i> ${escapeHTML(est.documento)}
+                <span class="doc-chip">
+                    <i class="fa-regular fa-id-badge"></i> ${escapeHTML(est.documento)}
                 </span>
             </td>
             <td style="text-align: center;">
                 <button 
                     type="button" 
-                    class="btn-delete-row" 
-                    onclick="openDeleteModal(${est.id}, '${escapeHTML(est.nombre)}')"
-                    title="Eliminar este estudiante"
+                    class="btn-delete-action" 
+                    onclick="triggerDelete('estudiante', ${est.id}, '${escapeQuote(est.nombre)}')"
+                    title="Eliminar estudiante"
                 >
                     <i class="fa-solid fa-trash-can"></i> Eliminar
                 </button>
             </td>
         `;
-        tableBody.appendChild(tr);
+        studentsTableBody.appendChild(tr);
     });
 }
 
-/**
- * Procesar envío del formulario (Crear Estudiante)
- */
-async function handleFormSubmit(e) {
+async function handleStudentSubmit(e) {
     e.preventDefault();
-
-    const nombre = inputNombre.value.trim();
-    const documento = inputDocumento.value.trim();
+    const nombre = inputStudentNombre.value.trim();
+    const documento = inputStudentDocumento.value.trim();
 
     if (!nombre || !documento) {
-        showToast('Por favor completa todos los campos requeridos.', 'error');
+        showToast('Completa todos los campos obligatorios.', 'error');
         return;
     }
 
-    // Validar duplicados locales
-    const yaExiste = estudiantes.some(est => est.documento.toString().trim() === documento);
-    if (yaExiste) {
-        showToast(`Ya existe un estudiante con el documento ${documento}.`, 'error');
-        return;
-    }
-
-    setSubmitting(true);
+    setSubmittingStudent(true);
 
     try {
-        const response = await fetch(API_ESTUDIANTES, {
+        const res = await fetch(API_ESTUDIANTES, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nombre, documento })
         });
 
-        const data = await response.json();
+        const data = await res.json();
 
-        if (response.ok) {
-            showToast(data.mensaje || '¡Estudiante registrado con éxito!', 'success');
-            form.reset();
-            inputNombre.focus();
+        if (res.ok) {
+            showToast(data.mensaje || 'Estudiante registrado con éxito', 'success');
+            studentForm.reset();
+            inputStudentNombre.focus();
             await cargarEstudiantes();
         } else {
-            showToast(data.error || 'Error al guardar el estudiante.', 'error');
+            showToast(data.error || 'Error al registrar estudiante.', 'error');
         }
-    } catch (error) {
-        console.error('Error al guardar:', error);
-        showToast('Error de conexión con el backend.', 'error');
+    } catch (err) {
+        console.error('Error al guardar estudiante:', err);
+        showToast('Error de comunicación con el servidor.', 'error');
     } finally {
-        setSubmitting(false);
+        setSubmittingStudent(false);
     }
 }
 
-/**
- * Abrir modal para confirmar eliminación
- */
-function openDeleteModal(id, nombre) {
-    studentIdToDelete = id;
-    modalStudentName.innerHTML = `¿Estás seguro de que deseas eliminar a <strong>${escapeHTML(nombre)}</strong> (ID #${id})?`;
-    deleteModal.classList.remove('hidden');
+function handleStudentSearch() {
+    const term = studentSearchInput.value.toLowerCase().trim();
+    if (term.length > 0) {
+        studentClearSearch.classList.remove('hidden');
+    } else {
+        studentClearSearch.classList.add('hidden');
+    }
+
+    const filtrados = estudiantes.filter(est => {
+        const matchNom = est.nombre && est.nombre.toLowerCase().includes(term);
+        const matchDoc = est.documento && est.documento.toString().toLowerCase().includes(term);
+        const matchId = est.id && est.id.toString().includes(term);
+        return matchNom || matchDoc || matchId;
+    });
+
+    renderEstudiantesTable(filtrados);
 }
 
-/**
- * Cerrar modal de eliminación
- */
+function showStudentsLoading(loading) {
+    if (loading) {
+        studentsLoader.classList.remove('hidden');
+        studentsEmpty.classList.add('hidden');
+        studentsNoResults.classList.add('hidden');
+    } else {
+        studentsLoader.classList.add('hidden');
+    }
+}
+
+function setSubmittingStudent(submitting) {
+    btnSubmitStudent.disabled = submitting;
+    const btnText = btnSubmitStudent.querySelector('.btn-text');
+    if (submitting) {
+        btnText.classList.add('hidden');
+        studentSpinner.classList.remove('hidden');
+    } else {
+        btnText.classList.remove('hidden');
+        studentSpinner.classList.add('hidden');
+    }
+}
+
+// ==========================================
+// MÓDULO: PROFESORES (CRUD)
+// ==========================================
+async function cargarProfesores() {
+    showTeachersLoading(true);
+    try {
+        const res = await fetch(API_PROFESORES);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        profesores = await res.json();
+        renderProfesoresTable(profesores);
+        updateKPIs();
+    } catch (error) {
+        console.error('Error al cargar profesores:', error);
+        showToast('No se pudo conectar con el servidor para obtener profesores.', 'error');
+        renderProfesoresTable([]);
+    } finally {
+        showTeachersLoading(false);
+    }
+}
+
+function renderProfesoresTable(list) {
+    teachersTableBody.innerHTML = '';
+
+    if (profesores.length === 0) {
+        teachersEmpty.classList.remove('hidden');
+        teachersNoResults.classList.add('hidden');
+        teachersCounter.textContent = 'Mostrando 0 registros';
+        return;
+    }
+
+    if (list.length === 0) {
+        teachersEmpty.classList.add('hidden');
+        teachersNoResults.classList.remove('hidden');
+        teachersCounter.textContent = '0 resultados encontrados';
+        return;
+    }
+
+    teachersEmpty.classList.add('hidden');
+    teachersNoResults.classList.add('hidden');
+    teachersCounter.textContent = `Mostrando ${list.length} de ${profesores.length} profesor(es)`;
+
+    list.forEach(prof => {
+        const tr = document.createElement('tr');
+        const initials = getInitials(prof.nombre);
+
+        tr.innerHTML = `
+            <td><span class="id-pill">#${prof.id}</span></td>
+            <td>
+                <div class="user-cell">
+                    <span class="user-avatar avatar-teacher">${initials}</span>
+                    <span>${escapeHTML(prof.nombre)}</span>
+                </div>
+            </td>
+            <td>
+                <span class="doc-chip">
+                    <i class="fa-regular fa-id-badge"></i> ${escapeHTML(prof.documento)}
+                </span>
+            </td>
+            <td>
+                <span class="subject-badge">
+                    <i class="fa-solid fa-book-open"></i> ${escapeHTML(prof.asignatura)}
+                </span>
+            </td>
+            <td>
+                <a href="mailto:${escapeHTML(prof.email)}" class="email-link" title="Enviar correo">
+                    <i class="fa-regular fa-envelope"></i> ${escapeHTML(prof.email)}
+                </a>
+            </td>
+            <td style="text-align: center;">
+                <button 
+                    type="button" 
+                    class="btn-delete-action" 
+                    onclick="triggerDelete('profesor', ${prof.id}, '${escapeQuote(prof.nombre)}')"
+                    title="Eliminar profesor"
+                >
+                    <i class="fa-solid fa-trash-can"></i> Eliminar
+                </button>
+            </td>
+        `;
+        teachersTableBody.appendChild(tr);
+    });
+}
+
+async function handleTeacherSubmit(e) {
+    e.preventDefault();
+    const nombre = inputTeacherNombre.value.trim();
+    const documento = inputTeacherDocumento.value.trim();
+    const asignatura = inputTeacherAsignatura.value.trim();
+    const email = inputTeacherEmail.value.trim();
+
+    if (!nombre || !documento || !asignatura || !email) {
+        showToast('Todos los campos son obligatorios.', 'error');
+        return;
+    }
+
+    setSubmittingTeacher(true);
+
+    try {
+        const res = await fetch(API_PROFESORES, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, documento, asignatura, email })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            showToast(data.mensaje || 'Profesor registrado con éxito', 'success');
+            teacherForm.reset();
+            inputTeacherNombre.focus();
+            await cargarProfesores();
+        } else {
+            showToast(data.error || 'Error al registrar profesor.', 'error');
+        }
+    } catch (err) {
+        console.error('Error al guardar profesor:', err);
+        showToast('Error de comunicación con el servidor.', 'error');
+    } finally {
+        setSubmittingTeacher(false);
+    }
+}
+
+function handleTeacherSearch() {
+    const term = teacherSearchInput.value.toLowerCase().trim();
+    if (term.length > 0) {
+        teacherClearSearch.classList.remove('hidden');
+    } else {
+        teacherClearSearch.classList.add('hidden');
+    }
+
+    const filtrados = profesores.filter(prof => {
+        const matchNom = prof.nombre && prof.nombre.toLowerCase().includes(term);
+        const matchDoc = prof.documento && prof.documento.toString().toLowerCase().includes(term);
+        const matchAsig = prof.asignatura && prof.asignatura.toLowerCase().includes(term);
+        const matchEmail = prof.email && prof.email.toLowerCase().includes(term);
+        const matchId = prof.id && prof.id.toString().includes(term);
+        return matchNom || matchDoc || matchAsig || matchEmail || matchId;
+    });
+
+    renderProfesoresTable(filtrados);
+}
+
+function showTeachersLoading(loading) {
+    if (loading) {
+        teachersLoader.classList.remove('hidden');
+        teachersEmpty.classList.add('hidden');
+        teachersNoResults.classList.add('hidden');
+    } else {
+        teachersLoader.classList.add('hidden');
+    }
+}
+
+function setSubmittingTeacher(submitting) {
+    btnSubmitTeacher.disabled = submitting;
+    const btnText = btnSubmitTeacher.querySelector('.btn-text');
+    if (submitting) {
+        btnText.classList.add('hidden');
+        teacherSpinner.classList.remove('hidden');
+    } else {
+        btnText.classList.remove('hidden');
+        teacherSpinner.classList.add('hidden');
+    }
+}
+
+// ==========================================
+// MODAL GLOBAL DE ELIMINACIÓN
+// ==========================================
+window.triggerDelete = function(type, id, name) {
+    deleteTarget = { type, id, name };
+    const entityLabel = type === 'profesor' ? 'al profesor' : 'al estudiante';
+    modalTitle.textContent = `¿Eliminar ${type === 'profesor' ? 'Profesor' : 'Estudiante'}?`;
+    modalDeleteMessage.innerHTML = `¿Estás seguro de que deseas eliminar ${entityLabel} <strong>${escapeHTML(name)}</strong> (ID #${id})?`;
+    deleteModal.classList.remove('hidden');
+};
+
 function closeDeleteModal() {
-    studentIdToDelete = null;
+    deleteTarget = null;
     deleteModal.classList.add('hidden');
 }
 
-/**
- * Confirmar y ejecutar eliminación del estudiante
- */
-async function confirmDeleteEstudiante() {
-    if (!studentIdToDelete) return;
+async function confirmDeleteAction() {
+    if (!deleteTarget) return;
 
-    const id = studentIdToDelete;
+    const { type, id } = deleteTarget;
+    const endpoint = type === 'profesor' ? `${API_PROFESORES}/${id}` : `${API_ESTUDIANTES}/${id}`;
     closeDeleteModal();
 
     try {
-        const response = await fetch(`${API_ESTUDIANTES}/${id}`, {
-            method: 'DELETE'
-        });
+        const res = await fetch(endpoint, { method: 'DELETE' });
+        const data = await res.json();
 
-        const data = await response.json();
-
-        if (response.ok) {
-            showToast(data.mensaje || 'Estudiante eliminado correctamente', 'success');
-            await cargarEstudiantes();
+        if (res.ok) {
+            showToast(data.mensaje || 'Registro eliminado correctamente', 'success');
+            if (type === 'profesor') {
+                await cargarProfesores();
+            } else {
+                await cargarEstudiantes();
+            }
         } else {
-            showToast(data.error || 'No se pudo eliminar el estudiante', 'error');
+            showToast(data.error || 'No se pudo eliminar el registro', 'error');
         }
-    } catch (error) {
-        console.error('Error al eliminar:', error);
+    } catch (err) {
+        console.error('Error al eliminar:', err);
         showToast('Error al intentar comunicarse con el servidor', 'error');
     }
 }
 
-/**
- * Filtrar estudiantes en tiempo real
- */
-function handleSearch() {
-    const term = searchInput.value.toLowerCase().trim();
+// ==========================================
+// ACTUALIZACIÓN DE KPIS Y MÉTRICAS
+// ==========================================
+function updateKPIs() {
+    // Estudiantes
+    const totalEst = estudiantes.length;
+    kpiTotalEstudiantes.textContent = totalEst;
+    badgeCountEstudiantes.textContent = totalEst;
 
-    if (term.length > 0) {
-        clearSearchBtn.classList.remove('hidden');
-    } else {
-        clearSearchBtn.classList.add('hidden');
-    }
+    // Profesores
+    const totalProf = profesores.length;
+    kpiTotalProfesores.textContent = totalProf;
+    badgeCountProfesores.textContent = totalProf;
 
-    const filtrados = estudiantes.filter(est => {
-        const matchNombre = est.nombre && est.nombre.toLowerCase().includes(term);
-        const matchDoc = est.documento && est.documento.toString().toLowerCase().includes(term);
-        const matchId = est.id && est.id.toString().includes(term);
-        return matchNombre || matchDoc || matchId;
-    });
-
-    renderTable(filtrados);
+    // Especialidades / Asignaturas únicas
+    const especialidades = new Set(
+        profesores.map(p => (p.asignatura || '').trim().toLowerCase()).filter(Boolean)
+    );
+    kpiTotalEspecialidades.textContent = especialidades.size;
 }
 
-/**
- * Actualizar contadores en las tarjetas
- */
-function updateCounters(total, active) {
-    totalCountEl.textContent = total;
-    activeCountEl.textContent = active;
-}
-
-/**
- * Mostrar / Ocultar indicador de carga de la tabla
- */
-function showLoading(isLoading) {
-    if (isLoading) {
-        tableLoader.classList.remove('hidden');
-        emptyState.classList.add('hidden');
-        noSearchResults.classList.add('hidden');
-    } else {
-        tableLoader.classList.add('hidden');
-    }
-}
-
-/**
- * Estado visual del botón durante el envío
- */
-function setSubmitting(isSubmitting) {
-    btnSubmit.disabled = isSubmitting;
-    if (isSubmitting) {
-        btnSubmitText.classList.add('hidden');
-        submitSpinner.classList.remove('hidden');
-    } else {
-        btnSubmitText.classList.remove('hidden');
-        submitSpinner.classList.add('hidden');
-    }
-}
-
-/**
- * Sistema de Notificaciones Toast
- */
+// ==========================================
+// SISTEMA DE NOTIFICACIONES TOAST
+// ==========================================
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
 
-    let icon = 'fa-info-circle';
+    let icon = 'fa-circle-info';
     if (type === 'success') icon = 'fa-circle-check';
     if (type === 'error') icon = 'fa-circle-xmark';
 
     toast.innerHTML = `
         <i class="fa-solid ${icon}"></i>
-        <div class="toast-message">${escapeHTML(message)}</div>
-        <button type="button" class="toast-close" title="Cerrar">&times;</button>
+        <div class="toast-msg">${escapeHTML(message)}</div>
+        <button type="button" class="toast-close-btn" title="Cerrar">&times;</button>
     `;
 
-    toast.querySelector('.toast-close').addEventListener('click', () => {
-        toast.remove();
-    });
+    toast.querySelector('.toast-close-btn').addEventListener('click', () => toast.remove());
 
     toastContainer.appendChild(toast);
 
-    // Auto-eliminar después de 4 segundos
+    // Auto eliminar a los 4 segundos
     setTimeout(() => {
         if (toast.parentNode) {
             toast.style.opacity = '0';
             toast.style.transform = 'translateX(100%)';
-            toast.style.transition = 'all 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
+            toast.style.transition = 'all 0.28s ease';
+            setTimeout(() => toast.remove(), 280);
         }
     }, 4000);
 }
 
-/**
- * Obtener iniciales de un nombre
- */
+// ==========================================
+// UTILIDADES
+// ==========================================
 function getInitials(name) {
-    if (!name) return 'E';
-    const parts = name.trim().split(' ').filter(Boolean);
+    if (!name) return 'U';
+    // Limpiar títulos honoríficos comunes (Dra., Lic., Mg., Prof., etc.)
+    const cleanName = name.replace(/^(dr|dra|lic|mg|prof|ing)\.?\s+/i, '');
+    const parts = cleanName.trim().split(' ').filter(Boolean);
+    if (parts.length === 0) return 'U';
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
     return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-/**
- * Escapar caracteres HTML para prevenir inyecciones XSS
- */
 function escapeHTML(str) {
     if (str === null || str === undefined) return '';
     return String(str)
@@ -407,4 +667,9 @@ function escapeHTML(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+function escapeQuote(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/'/g, "\\'");
 }
