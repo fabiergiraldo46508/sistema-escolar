@@ -1,4 +1,4 @@
-@echo off
+11@echo off
 title Servidor Backend - Sistema Escolar
 echo ======================================================
 echo    INICIANDO SERVIDOR BACKEND (FLASK API - PUERTO 5000)
