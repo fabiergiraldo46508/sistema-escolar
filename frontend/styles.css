@@ -66,6 +66,11 @@
     box-sizing: border-box;
 }
 
+/* Clase utilitaria FUNDAMENTAL — usada en todo el JS para ocultar elementos */
+.hidden {
+    display: none !important;
+}
+
 body {
     font-family: var(--font-body);
     background-color: var(--bg-main);

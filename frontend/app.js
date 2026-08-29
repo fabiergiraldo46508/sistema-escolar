@@ -228,25 +228,19 @@ function initDateDisplay() {
 // NAVEGACIÓN ENTRE MÓDULOS
 // ==========================================
 function setupNavigation() {
-    navEstudiantes.addEventListener('click', () => switchModule('estudiantes'));
-    navProfesores.addEventListener('click', () => switchModule('profesores'));
-    navMaterias.addEventListener('click', () => switchModule('materias'));
-    navAsignaciones.addEventListener('click', () => switchModule('asignaciones'));
+    navEstudiantes?.addEventListener('click', () => switchModule('estudiantes'));
+    navProfesores?.addEventListener('click', () => switchModule('profesores'));
+    navMaterias?.addEventListener('click', () => switchModule('materias'));
+    navAsignaciones?.addEventListener('click', () => switchModule('asignaciones'));
 
     // Sub-pestañas de Asignaciones
-    subtabBtnEstudiantes.addEventListener('click', () => switchSubtab('estudiantes'));
-    subtabBtnProfesores.addEventListener('click', () => switchSubtab('profesores'));
+    subtabBtnEstudiantes?.addEventListener('click', () => switchSubtab('estudiantes'));
+    subtabBtnProfesores?.addEventListener('click', () => switchSubtab('profesores'));
 
     // Control del menú lateral en móviles
-    if (mobileMenuBtn) {
-        mobileMenuBtn.addEventListener('click', () => toggleMobileSidebar(true));
-    }
-    if (sidebarCloseBtn) {
-        sidebarCloseBtn.addEventListener('click', () => toggleMobileSidebar(false));
-    }
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', () => toggleMobileSidebar(false));
-    }
+    mobileMenuBtn?.addEventListener('click', () => toggleMobileSidebar(true));
+    sidebarCloseBtn?.addEventListener('click', () => toggleMobileSidebar(false));
+    sidebarOverlay?.addEventListener('click', () => toggleMobileSidebar(false));
 }
 
 function toggleMobileSidebar(open) {
@@ -308,14 +302,14 @@ function switchSubtab(subtabName) {
 // ==========================================
 function setupEventListeners() {
     // --- ESTUDIANTES ---
-    studentForm.addEventListener('submit', handleStudentSubmit);
-    studentSearchInput.addEventListener('input', handleStudentSearch);
-    studentClearSearch.addEventListener('click', () => {
-        studentSearchInput.value = '';
+    studentForm?.addEventListener('submit', handleStudentSubmit);
+    studentSearchInput?.addEventListener('input', handleStudentSearch);
+    studentClearSearch?.addEventListener('click', () => {
+        if (studentSearchInput) studentSearchInput.value = '';
         studentClearSearch.classList.add('hidden');
         renderEstudiantesTable(estudiantes);
     });
-    btnReloadStudents.addEventListener('click', () => {
+    btnReloadStudents?.addEventListener('click', () => {
         btnReloadStudents.classList.add('spinning');
         cargarEstudiantes().finally(() => {
             setTimeout(() => btnReloadStudents.classList.remove('spinning'), 500);
@@ -323,14 +317,14 @@ function setupEventListeners() {
     });
 
     // --- PROFESORES ---
-    teacherForm.addEventListener('submit', handleTeacherSubmit);
-    teacherSearchInput.addEventListener('input', handleTeacherSearch);
-    teacherClearSearch.addEventListener('click', () => {
-        teacherSearchInput.value = '';
+    teacherForm?.addEventListener('submit', handleTeacherSubmit);
+    teacherSearchInput?.addEventListener('input', handleTeacherSearch);
+    teacherClearSearch?.addEventListener('click', () => {
+        if (teacherSearchInput) teacherSearchInput.value = '';
         teacherClearSearch.classList.add('hidden');
         renderProfesoresTable(profesores);
     });
-    btnReloadTeachers.addEventListener('click', () => {
+    btnReloadTeachers?.addEventListener('click', () => {
         btnReloadTeachers.classList.add('spinning');
         cargarProfesores().finally(() => {
             setTimeout(() => btnReloadTeachers.classList.remove('spinning'), 500);
@@ -338,14 +332,14 @@ function setupEventListeners() {
     });
 
     // --- MATERIAS (4.3) ---
-    materiaForm.addEventListener('submit', handleMateriaSubmit);
-    materiaSearchInput.addEventListener('input', handleMateriaSearch);
-    materiaClearSearch.addEventListener('click', () => {
-        materiaSearchInput.value = '';
+    materiaForm?.addEventListener('submit', handleMateriaSubmit);
+    materiaSearchInput?.addEventListener('input', handleMateriaSearch);
+    materiaClearSearch?.addEventListener('click', () => {
+        if (materiaSearchInput) materiaSearchInput.value = '';
         materiaClearSearch.classList.add('hidden');
         renderMateriasTable(materias);
     });
-    btnReloadMaterias.addEventListener('click', () => {
+    btnReloadMaterias?.addEventListener('click', () => {
         btnReloadMaterias.classList.add('spinning');
         cargarMaterias().finally(() => {
             setTimeout(() => btnReloadMaterias.classList.remove('spinning'), 500);
@@ -353,36 +347,36 @@ function setupEventListeners() {
     });
 
     // Modal Editar Materia
-    editMateriaForm.addEventListener('submit', handleEditMateriaSubmit);
-    btnCloseEditMateria.addEventListener('click', closeEditMateriaModal);
-    btnCancelEditMateria.addEventListener('click', closeEditMateriaModal);
-    editMateriaModal.addEventListener('click', (e) => {
+    editMateriaForm?.addEventListener('submit', handleEditMateriaSubmit);
+    btnCloseEditMateria?.addEventListener('click', closeEditMateriaModal);
+    btnCancelEditMateria?.addEventListener('click', closeEditMateriaModal);
+    editMateriaModal?.addEventListener('click', (e) => {
         if (e.target === editMateriaModal) closeEditMateriaModal();
     });
 
     // --- ASIGNACIONES (4.4) ---
-    asigStudentForm.addEventListener('submit', handleAsigStudentSubmit);
-    asigStudentSearch.addEventListener('input', handleAsigStudentSearch);
-    asigStudentClearSearch.addEventListener('click', () => {
-        asigStudentSearch.value = '';
+    asigStudentForm?.addEventListener('submit', handleAsigStudentSubmit);
+    asigStudentSearch?.addEventListener('input', handleAsigStudentSearch);
+    asigStudentClearSearch?.addEventListener('click', () => {
+        if (asigStudentSearch) asigStudentSearch.value = '';
         asigStudentClearSearch.classList.add('hidden');
         renderAsigEstudiantesTable(asignacionesEstudiantes);
     });
-    btnReloadAsigStudent.addEventListener('click', () => {
+    btnReloadAsigStudent?.addEventListener('click', () => {
         btnReloadAsigStudent.classList.add('spinning');
         cargarAsignacionesEstudiantes().finally(() => {
             setTimeout(() => btnReloadAsigStudent.classList.remove('spinning'), 500);
         });
     });
 
-    asigTeacherForm.addEventListener('submit', handleAsigTeacherSubmit);
-    asigTeacherSearch.addEventListener('input', handleAsigTeacherSearch);
-    asigTeacherClearSearch.addEventListener('click', () => {
-        asigTeacherSearch.value = '';
+    asigTeacherForm?.addEventListener('submit', handleAsigTeacherSubmit);
+    asigTeacherSearch?.addEventListener('input', handleAsigTeacherSearch);
+    asigTeacherClearSearch?.addEventListener('click', () => {
+        if (asigTeacherSearch) asigTeacherSearch.value = '';
         asigTeacherClearSearch.classList.add('hidden');
         renderAsigProfesoresTable(asignacionesProfesores);
     });
-    btnReloadAsigTeacher.addEventListener('click', () => {
+    btnReloadAsigTeacher?.addEventListener('click', () => {
         btnReloadAsigTeacher.classList.add('spinning');
         cargarAsignacionesProfesores().finally(() => {
             setTimeout(() => btnReloadAsigTeacher.classList.remove('spinning'), 500);
@@ -390,25 +384,25 @@ function setupEventListeners() {
     });
 
     // Modal Usuario Materias
-    btnCloseUserMaterias.addEventListener('click', closeUserMateriasModal);
-    btnAcceptUserMaterias.addEventListener('click', closeUserMateriasModal);
-    userMateriasModal.addEventListener('click', (e) => {
+    btnCloseUserMaterias?.addEventListener('click', closeUserMateriasModal);
+    btnAcceptUserMaterias?.addEventListener('click', closeUserMateriasModal);
+    userMateriasModal?.addEventListener('click', (e) => {
         if (e.target === userMateriasModal) closeUserMateriasModal();
     });
 
     // Modal Global de Eliminación
-    btnCancelDelete.addEventListener('click', closeDeleteModal);
-    btnConfirmDelete.addEventListener('click', confirmDeleteAction);
-    deleteModal.addEventListener('click', (e) => {
+    btnCancelDelete?.addEventListener('click', closeDeleteModal);
+    btnConfirmDelete?.addEventListener('click', confirmDeleteAction);
+    deleteModal?.addEventListener('click', (e) => {
         if (e.target === deleteModal) closeDeleteModal();
     });
 
     // Tecla ESC para modales
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            if (!deleteModal.classList.contains('hidden')) closeDeleteModal();
-            if (!editMateriaModal.classList.contains('hidden')) closeEditMateriaModal();
-            if (!userMateriasModal.classList.contains('hidden')) closeUserMateriasModal();
+            if (deleteModal && !deleteModal.classList.contains('hidden')) closeDeleteModal();
+            if (editMateriaModal && !editMateriaModal.classList.contains('hidden')) closeEditMateriaModal();
+            if (userMateriasModal && !userMateriasModal.classList.contains('hidden')) closeUserMateriasModal();
         }
     });
 }
