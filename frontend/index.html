@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="description"
+		content="Panel de administración escolar para la gestión integral de estudiantes, profesores, materias y asignaciones académicas.">
+	<title>Sistema Escolar | Panel de Administración</title>
+
+	<!-- Google Fonts: Outfit & Inter / Plus Jakarta Sans -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+		rel="stylesheet">
+
+	<!-- FontAwesome 6 Icons -->
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+	<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+	<!-- Contenedor de Notificaciones Toast -->
+	<div id="toast-container" class="toast-container"></div>
+
+	<!-- Modal Global de Confirmación para Eliminación / Desasignación -->
+	<div id="delete-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+		<div class="modal-box">
+			<div class="modal-icon-warning">
+				<i class="fa-solid fa-triangle-exclamation"></i>
+			</div>
+			<h3 id="modal-title">Confirmar Eliminación</h3>
+			<p id="modal-delete-message">¿Estás seguro de que deseas eliminar este registro del sistema? Esta acción no
+				se puede deshacer.</p>
+			<div class="modal-actions">
+				<button type="button" id="btn-cancel-delete" class="btn-secondary">
+					<i class="fa-solid fa-xmark"></i> Cancelar
+				</button>
+				<button type="button" id="btn-confirm-delete" class="btn-danger">
+					<i class="fa-solid fa-trash-can"></i> Sí, continuar
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Modal para Edición de Materias (Módulo 4.3) -->
+	<div id="edit-materia-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="edit-materia-title">
+		<div class="modal-box modal-box-large">
+			<div class="modal-header-custom">
+				<div class="card-header-icon bg-indigo">
+					<i class="fa-solid fa-pen-to-square"></i>
+				</div>
+				<div>
+					<h3 id="edit-materia-title">Editar Materia</h3>
+					<p class="card-desc">Actualiza el código, nombre o descripción académica</p>
+				</div>
+				<button type="button" id="btn-close-edit-materia" class="modal-close-x" title="Cerrar ventana">
+					<i class="fa-solid fa-xmark"></i>
+				</button>
+			</div>
+
+			<form id="edit-materia-form" class="dashboard-form">
+				<input type="hidden" id="edit-materia-id">
+
+				<div class="form-group">
+					<label for="edit-materia-codigo">
+						<i class="fa-solid fa-barcode"></i> Código de la Materia
+					</label>
+					<div class="input-container">
+						<input type="text" id="edit-materia-codigo" name="codigo" required
+							placeholder="Ej. MAT-101" minlength="2" style="text-transform: uppercase;">
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label for="edit-materia-nombre">
+						<i class="fa-solid fa-book-bookmark"></i> Nombre de la Materia
+					</label>
+					<div class="input-container">
+						<input type="text" id="edit-materia-nombre" name="nombre" required
+							placeholder="Ej. Matemáticas Avanzadas" minlength="3">
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label for="edit-materia-descripcion">
+						<i class="fa-regular fa-file-lines"></i> Descripción / Temario
+					</label>
+					<div class="input-container">
+						<textarea id="edit-materia-descripcion" name="descripcion" rows="3"
+							placeholder="Descripción de la materia, contenidos principales o competencias..."></textarea>
+					</div>
+				</div>
+
+				<div class="modal-actions">
+					<button type="button" id="btn-cancel-edit-materia" class="btn-secondary">
+						<i class="fa-solid fa-xmark"></i> Cancelar
+					</button>
+					<button type="submit" id="btn-save-edit-materia" class="btn-primary">
+						<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<!-- Modal para Consultar Materias Asignadas a Usuario -->
+	<div id="user-materias-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+		<div class="modal-box modal-box-large">
+			<div class="modal-header-custom">
+				<div class="card-header-icon bg-purple" id="user-materias-icon">
+					<i class="fa-solid fa-book-open-reader"></i>
+				</div>
+				<div>
+					<h3 id="user-materias-modal-title">Materias Asignadas</h3>
+					<p class="card-desc" id="user-materias-modal-subtitle">Detalle de asignaturas matriculadas</p>
+				</div>
+				<button type="button" id="btn-close-user-materias" class="modal-close-x" title="Cerrar">
+					<i class="fa-solid fa-xmark"></i>
+				</button>
+			</div>
+
+			<div class="user-materias-content" id="user-materias-list-container">
+				<!-- Lista de materias inyectada con JS -->
+			</div>
+
+			<div class="modal-actions">
+				<button type="button" id="btn-accept-user-materias" class="btn-secondary">
+					<i class="fa-solid fa-check"></i> Cerrar
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Layout Principal del Dashboard -->
+	<div class="dashboard-wrapper">
+		<!-- Overlay para menú móvil -->
+		<div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
+
+		<!-- Barra Lateral de Navegación (Sidebar) -->
+		<aside id="sidebar" class="sidebar">
+			<div class="sidebar-header">
+				<div class="brand-logo">
+					<div class="brand-text">
+						<span class="brand-title">Sistema Escolar</span>
+						<span class="brand-subtitle">Panel Administrativo</span>
+					</div>
+				</div>
+				<button id="sidebar-close-btn" class="sidebar-close-btn" title="Cerrar menú">
+					<i class="fa-solid fa-xmark"></i>
+				</button>
+			</div>
+
+			<nav class="sidebar-nav">
+				<div class="nav-section-title">MÓDULOS DE GESTIÓN</div>
+				<ul class="nav-list">
+					<li>
+						<button type="button" class="nav-item active" id="nav-estudiantes"
+							data-target="view-estudiantes">
+							<i class="fa-solid fa-user-graduate"></i>
+							<span class="nav-label">Estudiantes</span>
+							<span class="nav-badge" id="badge-count-estudiantes">0</span>
+						</button>
+					</li>
+					<li>
+						<button type="button" class="nav-item" id="nav-profesores" data-target="view-profesores">
+							<i class="fa-solid fa-chalkboard-user"></i>
+							<span class="nav-label">Profesores</span>
+							<span class="nav-badge" id="badge-count-profesores">0</span>
+						</button>
+					</li>
+					<li>
+						<button type="button" class="nav-item" id="nav-materias" data-target="view-materias">
+							<i class="fa-solid fa-book-bookmark"></i>
+							<span class="nav-label">Materias</span>
+							<span class="nav-badge" id="badge-count-materias">0</span>
+						</button>
+					</li>
+					<li>
+						<button type="button" class="nav-item" id="nav-asignaciones" data-target="view-asignaciones">
+							<i class="fa-solid fa-link"></i>
+							<span class="nav-label">Asignaciones</span>
+							<span class="nav-badge" id="badge-count-asignaciones">0</span>
+						</button>
+					</li>
+				</ul>
+			</nav>
+
+		</aside>
+
+		<!-- Contenido Principal -->
+		<div class="main-wrapper">
+			<!-- Topbar / Cabecera Superior -->
+			<header class="topbar">
+				<div class="topbar-left">
+					<button id="mobile-menu-btn" class="mobile-menu-btn" title="Abrir menú">
+						<i class="fa-solid fa-bars"></i>
+					</button>
+					<div class="page-headings">
+						<h1 id="current-view-title">Módulo de Estudiantes</h1>
+						<span class="page-breadcrumb" id="current-view-subtitle">Administración de matrículas y
+							alumnos</span>
+					</div>
+				</div>
+				<div class="topbar-right">
+					<div class="date-badge">
+						<i class="fa-regular fa-calendar-days"></i>
+						<span id="current-date">--/--/----</span>
+					</div>
+				</div>
+			</header>
+
+			<!-- Tarjetas de Métricas Estadísticas (KPIs) -->
+			<section class="stats-container">
+				<div class="stat-card stat-blue">
+					<div class="stat-icon">
+						<i class="fa-solid fa-users-line"></i>
+					</div>
+					<div class="stat-details">
+						<span class="stat-label">Estudiantes</span>
+						<span class="stat-value" id="kpi-total-estudiantes">0</span>
+					</div>
+				</div>
+
+				<div class="stat-card stat-emerald">
+					<div class="stat-icon">
+						<i class="fa-solid fa-user-tie"></i>
+					</div>
+					<div class="stat-details">
+						<span class="stat-label">Profesores</span>
+						<span class="stat-value" id="kpi-total-profesores">0</span>
+					</div>
+				</div>
+
+				<div class="stat-card stat-purple">
+					<div class="stat-icon">
+						<i class="fa-solid fa-book-bookmark"></i>
+					</div>
+					<div class="stat-details">
+						<span class="stat-label">Materias</span>
+						<span class="stat-value" id="kpi-total-materias">0</span>
+					</div>
+				</div>
+
+				<div class="stat-card stat-amber">
+					<div class="stat-icon">
+						<i class="fa-solid fa-clipboard-check"></i>
+					</div>
+					<div class="stat-details">
+						<span class="stat-label">Asignaciones</span>
+						<span class="stat-value" id="kpi-total-asignaciones">0</span>
+					</div>
+				</div>
+
+			</section>
+
+			<!-- Contenedor Dinámico de Vistas -->
+			<main class="content-area">
+
+				<!-- ==========================================
+                     VISTA 1: MÓDULO DE ESTUDIANTES
+                     ========================================== -->
+				<section id="view-estudiantes" class="module-view active">
+					<div class="view-grid">
+						<!-- Formulario de Registro Estudiante -->
+						<div class="dashboard-card form-card">
+							<div class="card-header">
+								<div class="card-title-box">
+									<div class="card-header-icon bg-indigo">
+										<i class="fa-solid fa-user-plus"></i>
+									</div>
+									<div>
+										<h2>Registrar Estudiante</h2>
+										<p class="card-desc">Nuevo ingreso académico</p>
+									</div>
+								</div>
+							</div>
+
+							<form id="student-form" class="dashboard-form" autocomplete="off">
+								<div class="form-group">
+									<label for="student-nombre">
+										<i class="fa-regular fa-user"></i> Nombre Completo
+									</label>
+									<div class="input-container">
+										<input type="text" id="student-nombre" name="nombre" required
+											placeholder="Ej. Juan Pérez González" minlength="3">
+									</div>
+								</div>
+
+								<div class="form-group">
+									<label for="student-documento">
+										<i class="fa-regular fa-id-card"></i> Documento de Identidad
+									</label>
+									<div class="input-container">
+										<input type="text" id="student-documento" name="documento" required
+											placeholder="Ej. 1002345678" minlength="4">
+									</div>
+								</div>
+
+								<button type="submit" id="btn-submit-student" class="btn-primary">
+									<span class="btn-text"><i class="fa-solid fa-plus"></i> Guardar Estudiante</span>
+									<div class="spinner hidden" id="student-spinner"></div>
+								</button>
+							</form>
+						</div>
+
+						<!-- Tabla de Estudiantes -->
+						<div class="dashboard-card table-card">
+							<div class="card-header table-card-header">
+								<div class="card-title-box">
+									<div class="card-header-icon bg-blue">
+										<i class="fa-solid fa-list-check"></i>
+									</div>
+									<div>
+										<h2>Listado de Estudiantes</h2>
+										<p class="card-desc">Registros matriculados en el sistema</p>
+									</div>
+								</div>
+
+								<div class="table-actions">
+									<div class="search-input-box">
+										<i class="fa-solid fa-magnifying-glass"></i>
+										<input type="text" id="student-search-input"
+											placeholder="Buscar estudiante o doc...">
+										<button type="button" id="student-clear-search" class="clear-search-btn hidden"
+											title="Limpiar filtro">
+											<i class="fa-solid fa-xmark"></i>
+										</button>
+									</div>
+									<button type="button" id="btn-reload-students" class="btn-icon-action"
+										title="Actualizar lista">
+										<i class="fa-solid fa-rotate"></i>
+									</button>
+								</div>
+							</div>
+
+							<div class="table-container">
+								<table class="dashboard-table">
+									<thead>
+										<tr>
+											<th style="width: 70px;">ID</th>
+											<th>Estudiante</th>
+											<th>Documento</th>
+											<th>Materias Inscritas</th>
+											<th style="width: 140px; text-align: center;">Acciones</th>
+										</tr>
+									</thead>
+									<tbody id="students-table-body">
+										<!-- Generado dinámicamente -->
+									</tbody>
+								</table>
+
+								<!-- Estado: Cargando -->
+								<div id="students-loader" class="state-view hidden">
+									<div class="app-spinner"></div>
+									<p>Cargando estudiantes...</p>
+								</div>
+
+								<!-- Estado: Vacío -->
+								<div id="students-empty" class="state-view hidden">
+									<div class="state-icon"><i class="fa-solid fa-folder-open"></i></div>
+									<h3>No hay estudiantes registrados</h3>
+									<p>Completa el formulario para registrar el primer alumno.</p>
+								</div>
+
+								<!-- Estado: Sin Resultados -->
+								<div id="students-no-results" class="state-view hidden">
+									<div class="state-icon"><i class="fa-solid fa-user-slash"></i></div>
+									<h3>Sin coincidencias</h3>
+									<p>No se encontraron estudiantes con los criterios de búsqueda.</p>
+								</div>
+							</div>
+
+							<div class="table-card-footer">
+								<span id="students-counter" class="footer-counter-badge">Mostrando 0 registros</span>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<!-- ==========================================
+                     VISTA 2: MÓDULO DE PROFESORES
+                     ========================================== -->
+				<section id="view-profesores" class="module-view">
+					<div class="view-grid">
+						<!-- Formulario de Registro Profesor -->
+						<div class="dashboard-card form-card">
+							<div class="card-header">
+								<div class="card-title-box">
+									<div class="card-header-icon bg-emerald">
+										<i class="fa-solid fa-chalkboard-user"></i>
+									</div>
+									<div>
+										<h2>Registrar Profesor</h2>
+										<p class="card-desc">Nuevo docente al cuerpo académico</p>
+									</div>
+								</div>
+							</div>
+
+							<form id="teacher-form" class="dashboard-form" autocomplete="off">
+								<div class="form-group">
+									<label for="teacher-nombre">
+										<i class="fa-regular fa-user"></i> Nombre Completo
+									</label>
+									<div class="input-container">
+										<input type="text" id="teacher-nombre" name="nombre" required
+											placeholder="Ej. Dra. Elena Ramos" minlength="3">
+									</div>
+								</div>
+
+								<div class="form-group">
+									<label for="teacher-documento">
+										<i class="fa-regular fa-id-card"></i> Documento de Identidad
+									</label>
+									<div class="input-container">
+										<input type="text" id="teacher-documento" name="documento" required
+											placeholder="Ej. 2001122334" minlength="4">
+									</div>
+								</div>
+
+								<div class="form-group">
+									<label for="teacher-asignatura">
+										<i class="fa-solid fa-graduation-cap"></i> Asignatura / Especialidad
+									</label>
+									<div class="input-container">
+										<input type="text" id="teacher-asignatura" name="asignatura" required
+											placeholder="Ej. Matemáticas Avanzadas" minlength="2">
+									</div>
+								</div>
+
+								<div class="form-group">
+									<label for="teacher-email">
+										<i class="fa-regular fa-envelope"></i> Correo Electrónico
+									</label>
+									<div class="input-container">
+										<input type="email" id="teacher-email" name="email" required
+											placeholder="Ej. elena.ramos@colegio.edu">
+									</div>
+								</div>
+
+								<button type="submit" id="btn-submit-teacher" class="btn-primary btn-emerald">
+									<span class="btn-text"><i class="fa-solid fa-plus"></i> Guardar Profesor</span>
+									<div class="spinner hidden" id="teacher-spinner"></div>
+								</button>
+							</form>
+						</div>
+
+						<!-- Tabla de Profesores -->
+						<div class="dashboard-card table-card">
+							<div class="card-header table-card-header">
+								<div class="card-title-box">
+									<div class="card-header-icon bg-purple">
+										<i class="fa-solid fa-people-roof"></i>
+									</div>
+									<div>
+										<h2>Cuerpo Docente</h2>
+										<p class="card-desc">Profesores activos en la institución</p>
+									</div>
+								</div>
+
+								<div class="table-actions">
+									<div class="search-input-box">
+										<i class="fa-solid fa-magnifying-glass"></i>
+										<input type="text" id="teacher-search-input"
+											placeholder="Buscar por nombre, asignatura o email...">
+										<button type="button" id="teacher-clear-search" class="clear-search-btn hidden"
+											title="Limpiar filtro">
+											<i class="fa-solid fa-xmark"></i>
+										</button>
+									</div>
+									<button type="button" id="btn-reload-teachers" class="btn-icon-action"
+										title="Actualizar lista">
+										<i class="fa-solid fa-rotate"></i>
+									</button>
+								</div>
+							</div>
+
+							<div class="table-container">
+								<table class="dashboard-table">
+									<thead>
+										<tr>
+											<th style="width: 65px;">ID</th>
+											<th>Docente</th>
+											<th>Documento</th>
+											<th>Especialidad</th>
+											<th>Materias Asignadas</th>
+											<th>Email</th>
+											<th style="width: 140px; text-align: center;">Acciones</th>
+										</tr>
+									</thead>
+									<tbody id="teachers-table-body">
+										<!-- Generado dinámicamente -->
+									</tbody>
+								</table>
+
+								<!-- Estado: Cargando -->
+								<div id="teachers-loader" class="state-view hidden">
+									<div class="app-spinner"></div>
+									<p>Cargando profesores...</p>
+								</div>
+
+								<!-- Estado: Vacío -->
+								<div id="teachers-empty" class="state-view hidden">
+									<div class="state-icon"><i class="fa-solid fa-folder-open"></i></div>
+									<h3>No hay profesores registrados</h3>
+									<p>Utiliza el formulario de la izquierda para registrar al primer profesor.</p>
+								</div>
+
+								<!-- Estado: Sin Resultados -->
+								<div id="teachers-no-results" class="state-view hidden">
+									<div class="state-icon"><i class="fa-solid fa-user-slash"></i></div>
+									<h3>Sin coincidencias</h3>
+									<p>No se encontraron profesores con los criterios de búsqueda.</p>
+								</div>
+							</div>
+
+							<div class="table-card-footer">
+								<span id="teachers-counter" class="footer-counter-badge">Mostrando 0 registros</span>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<!-- ==========================================
+                     VISTA 3: MÓDULO DE MATERIAS (4.3 CRUD)
+                     ========================================== -->
+				<section id="view-materias" class="module-view">
+					<div class="view-grid">
+						<!-- Formulario de Registro de Materia -->
+						<div class="dashboard-card form-card">
+							<div class="card-header">
+								<div class="card-title-box">
+									<div class="card-header-icon bg-indigo">
+										<i class="fa-solid fa-book-medical"></i>
+									</div>
+									<div>
+										<h2>Nueva Materia</h2>
+										<p class="card-desc">Crear asignatura académica</p>
+									</div>
+								</div>
+							</div>
+
+							<form id="materia-form" class="dashboard-form" autocomplete="off">
+								<div class="form-group">
+									<label for="materia-codigo">
+										<i class="fa-solid fa-barcode"></i> Código de Asignatura
+									</label>
+									<div class="input-container">
+										<input type="text" id="materia-codigo" name="codigo" required
+											placeholder="Ej. MAT-101, FIS-201" minlength="2" style="text-transform: uppercase;">
+									</div>
+								</div>
+
+								<div class="form-group">
+									<label for="materia-nombre">
+										<i class="fa-solid fa-book"></i> Nombre de la Materia
+									</label>
+									<div class="input-container">
+										<input type="text" id="materia-nombre" name="nombre" required
+											placeholder="Ej. Matemáticas Avanzadas" minlength="3">
+									</div>
+								</div>
+
+								<div class="form-group">
+									<label for="materia-descripcion">
+										<i class="fa-regular fa-file-lines"></i> Descripción / Temario
+									</label>
+									<div class="input-container">
+										<textarea id="materia-descripcion" name="descripcion" rows="3"
+											placeholder="Ej. Cálculo diferencial, álgebra lineal y geometría analítica..."></textarea>
+									</div>
+								</div>
+
+								<button type="submit" id="btn-submit-materia" class="btn-primary">
+									<span class="btn-text"><i class="fa-solid fa-plus"></i> Guardar Materia</span>
+									<div class="spinner hidden" id="materia-spinner"></div>
+								</button>
+							</form>
+						</div>
+
+						<!-- Tabla de Materias -->
+						<div class="dashboard-card table-card">
+							<div class="card-header table-card-header">
+								<div class="card-title-box">
+									<div class="card-header-icon bg-purple">
+										<i class="fa-solid fa-book-bookmark"></i>
+									</div>
+									<div>
+										<h2>Catálogo de Materias</h2>
+										<p class="card-desc">Asignaturas disponibles en el plan de estudios</p>
+									</div>
+								</div>
+
+								<div class="table-actions">
+									<div class="search-input-box">
+										<i class="fa-solid fa-magnifying-glass"></i>
+										<input type="text" id="materia-search-input"
+											placeholder="Buscar por código, nombre o descripción...">
+										<button type="button" id="materia-clear-search" class="clear-search-btn hidden"
+											title="Limpiar filtro">
+											<i class="fa-solid fa-xmark"></i>
+										</button>
+									</div>
+									<button type="button" id="btn-reload-materias" class="btn-icon-action"
+										title="Actualizar lista">
+										<i class="fa-solid fa-rotate"></i>
+									</button>
+								</div>
+							</div>
+
+							<div class="table-container">
+								<table class="dashboard-table">
+									<thead>
+										<tr>
+											<th style="width: 65px;">ID</th>
+											<th style="width: 110px;">Código</th>
+											<th>Nombre de la Materia</th>
+											<th>Descripción</th>
+											<th style="text-align: center;">Estudiantes</th>
+											<th style="text-align: center;">Profesores</th>
+											<th style="width: 140px; text-align: center;">Acciones</th>
+										</tr>
+									</thead>
+									<tbody id="materias-table-body">
+										<!-- Generado dinámicamente -->
+									</tbody>
+								</table>
+
+								<!-- Estado: Cargando -->
+								<div id="materias-loader" class="state-view hidden">
+									<div class="app-spinner"></div>
+									<p>Cargando materias...</p>
+								</div>
+
+								<!-- Estado: Vacío -->
+								<div id="materias-empty" class="state-view hidden">
+									<div class="state-icon"><i class="fa-solid fa-folder-open"></i></div>
+									<h3>No hay materias registradas</h3>
+									<p>Crea la primera asignatura académica desde el formulario izquierdo.</p>
+								</div>
+
+								<!-- Estado: Sin Resultados -->
+								<div id="materias-no-results" class="state-view hidden">
+									<div class="state-icon"><i class="fa-solid fa-book"></i></div>
+									<h3>Sin coincidencias</h3>
+									<p>No se encontraron materias con los criterios de búsqueda.</p>
+								</div>
+							</div>
+
+							<div class="table-card-footer">
+								<span id="materias-counter" class="footer-counter-badge">Mostrando 0 registros</span>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<!-- ==========================================
+                     VISTA 4: MÓDULO DE ASIGNACIÓN (4.4)
+                     ========================================== -->
+				<section id="view-asignaciones" class="module-view">
+					<!-- Pestañas internas de Asignaciones (Estudiantes / Profesores) -->
+					<div class="subtabs-bar">
+						<button type="button" class="subtab-btn active" id="subtab-btn-estudiantes" data-subtab="subtab-estudiantes">
+							<i class="fa-solid fa-user-graduate"></i>
+							<span>Asignación a Estudiantes</span>
+							<span class="subtab-pill" id="subtab-badge-estudiantes">0</span>
+						</button>
+						<button type="button" class="subtab-btn" id="subtab-btn-profesores" data-subtab="subtab-profesores">
+							<i class="fa-solid fa-chalkboard-user"></i>
+							<span>Asignación a Profesores</span>
+							<span class="subtab-pill" id="subtab-badge-profesores">0</span>
+						</button>
+					</div>
+
+					<!-- SUB-TAB 1: ASIGNACIÓN A ESTUDIANTES -->
+					<div id="subtab-estudiantes" class="subtab-content active">
+						<div class="view-grid">
+							<!-- Formulario Asignar Materia a Estudiante -->
+							<div class="dashboard-card form-card">
+								<div class="card-header">
+									<div class="card-title-box">
+										<div class="card-header-icon bg-indigo">
+											<i class="fa-solid fa-link"></i>
+										</div>
+										<div>
+											<h2>Asignar a Estudiante</h2>
+											<p class="card-desc">Matricular materia a un alumno</p>
+										</div>
+									</div>
+								</div>
+
+								<form id="asig-student-form" class="dashboard-form">
+									<div class="form-group">
+										<label for="asig-student-select">
+											<i class="fa-regular fa-user"></i> Seleccionar Estudiante
+										</label>
+										<div class="input-container">
+											<select id="asig-student-select" name="estudiante_id" required class="dashboard-select">
+												<option value="">-- Seleccionar Estudiante --</option>
+											</select>
+										</div>
+									</div>
+
+									<div class="form-group">
+										<label for="asig-student-materia-select">
+											<i class="fa-solid fa-book-bookmark"></i> Seleccionar Materia
+										</label>
+										<div class="input-container">
+											<select id="asig-student-materia-select" name="materia_id" required class="dashboard-select">
+												<option value="">-- Seleccionar Materia --</option>
+											</select>
+										</div>
+									</div>
+
+									<button type="submit" id="btn-submit-asig-student" class="btn-primary">
+										<span class="btn-text"><i class="fa-solid fa-link"></i> Realizar Asignación</span>
+										<div class="spinner hidden" id="asig-student-spinner"></div>
+									</button>
+								</form>
+							</div>
+
+							<!-- Tabla de Asignaciones de Estudiantes -->
+							<div class="dashboard-card table-card">
+								<div class="card-header table-card-header">
+									<div class="card-title-box">
+										<div class="card-header-icon bg-blue">
+											<i class="fa-solid fa-list-check"></i>
+										</div>
+										<div>
+											<h2>Materias por Estudiante</h2>
+											<p class="card-desc">Relación activa de estudiantes y sus asignaturas</p>
+										</div>
+									</div>
+
+									<div class="table-actions">
+										<div class="search-input-box">
+											<i class="fa-solid fa-magnifying-glass"></i>
+											<input type="text" id="asig-student-search"
+												placeholder="Buscar por estudiante, doc o materia...">
+											<button type="button" id="asig-student-clear-search" class="clear-search-btn hidden"
+												title="Limpiar filtro">
+												<i class="fa-solid fa-xmark"></i>
+											</button>
+										</div>
+										<button type="button" id="btn-reload-asig-student" class="btn-icon-action"
+											title="Actualizar lista">
+											<i class="fa-solid fa-rotate"></i>
+										</button>
+									</div>
+								</div>
+
+								<div class="table-container">
+									<table class="dashboard-table">
+										<thead>
+											<tr>
+												<th style="width: 60px;">ID</th>
+												<th>Estudiante</th>
+												<th>Documento</th>
+												<th>Materia Asignada</th>
+												<th>Fecha</th>
+												<th style="width: 120px; text-align: center;">Acciones</th>
+											</tr>
+										</thead>
+										<tbody id="asig-student-table-body">
+											<!-- Generado dinámicamente -->
+										</tbody>
+									</table>
+
+									<!-- Estados -->
+									<div id="asig-student-loader" class="state-view hidden">
+										<div class="app-spinner"></div>
+										<p>Cargando asignaciones...</p>
+									</div>
+
+									<div id="asig-student-empty" class="state-view hidden">
+										<div class="state-icon"><i class="fa-solid fa-link-slash"></i></div>
+										<h3>No hay materias asignadas a estudiantes</h3>
+										<p>Selecciona un estudiante y una materia para crear la primera asignación.</p>
+									</div>
+
+									<div id="asig-student-no-results" class="state-view hidden">
+										<div class="state-icon"><i class="fa-solid fa-filter-circle-xmark"></i></div>
+										<h3>Sin coincidencias</h3>
+										<p>No se encontraron asignaciones para esta búsqueda.</p>
+									</div>
+								</div>
+
+								<div class="table-card-footer">
+									<span id="asig-student-counter" class="footer-counter-badge">Mostrando 0 registros</span>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- SUB-TAB 2: ASIGNACIÓN A PROFESORES -->
+					<div id="subtab-profesores" class="subtab-content">
+						<div class="view-grid">
+							<!-- Formulario Asignar Materia a Profesor -->
+							<div class="dashboard-card form-card">
+								<div class="card-header">
+									<div class="card-title-box">
+										<div class="card-header-icon bg-emerald">
+											<i class="fa-solid fa-chalkboard-user"></i>
+										</div>
+										<div>
+											<h2>Asignar a Profesor</h2>
+											<p class="card-desc">Asignar cátedra a un docente</p>
+										</div>
+									</div>
+								</div>
+
+								<form id="asig-teacher-form" class="dashboard-form">
+									<div class="form-group">
+										<label for="asig-teacher-select">
+											<i class="fa-solid fa-user-tie"></i> Seleccionar Profesor
+										</label>
+										<div class="input-container">
+											<select id="asig-teacher-select" name="profesor_id" required class="dashboard-select">
+												<option value="">-- Seleccionar Profesor --</option>
+											</select>
+										</div>
+									</div>
+
+									<div class="form-group">
+										<label for="asig-teacher-materia-select">
+											<i class="fa-solid fa-book-bookmark"></i> Seleccionar Materia
+										</label>
+										<div class="input-container">
+											<select id="asig-teacher-materia-select" name="materia_id" required class="dashboard-select">
+												<option value="">-- Seleccionar Materia --</option>
+											</select>
+										</div>
+									</div>
+
+									<button type="submit" id="btn-submit-asig-teacher" class="btn-primary btn-emerald">
+										<span class="btn-text"><i class="fa-solid fa-link"></i> Asignar Cátedra</span>
+										<div class="spinner hidden" id="asig-teacher-spinner"></div>
+									</button>
+								</form>
+							</div>
+
+							<!-- Tabla de Asignaciones de Profesores -->
+							<div class="dashboard-card table-card">
+								<div class="card-header table-card-header">
+									<div class="card-title-box">
+										<div class="card-header-icon bg-purple">
+											<i class="fa-solid fa-people-roof"></i>
+										</div>
+										<div>
+											<h2>Cátedras por Profesor</h2>
+											<p class="card-desc">Materias impartidas por el cuerpo docente</p>
+										</div>
+									</div>
+
+									<div class="table-actions">
+										<div class="search-input-box">
+											<i class="fa-solid fa-magnifying-glass"></i>
+											<input type="text" id="asig-teacher-search"
+												placeholder="Buscar por docente, materia o email...">
+											<button type="button" id="asig-teacher-clear-search" class="clear-search-btn hidden"
+												title="Limpiar filtro">
+												<i class="fa-solid fa-xmark"></i>
+											</button>
+										</div>
+										<button type="button" id="btn-reload-asig-teacher" class="btn-icon-action"
+											title="Actualizar lista">
+											<i class="fa-solid fa-rotate"></i>
+										</button>
+									</div>
+								</div>
+
+								<div class="table-container">
+									<table class="dashboard-table">
+										<thead>
+											<tr>
+												<th style="width: 60px;">ID</th>
+												<th>Profesor</th>
+												<th>Especialidad</th>
+												<th>Materia Impartida</th>
+												<th>Fecha</th>
+												<th style="width: 120px; text-align: center;">Acciones</th>
+											</tr>
+										</thead>
+										<tbody id="asig-teacher-table-body">
+											<!-- Generado dinámicamente -->
+										</tbody>
+									</table>
+
+									<!-- Estados -->
+									<div id="asig-teacher-loader" class="state-view hidden">
+										<div class="app-spinner"></div>
+										<p>Cargando asignaciones...</p>
+									</div>
+
+									<div id="asig-teacher-empty" class="state-view hidden">
+										<div class="state-icon"><i class="fa-solid fa-chalkboard"></i></div>
+										<h3>No hay materias asignadas a profesores</h3>
+										<p>Selecciona un docente y una materia para asignarle su cátedra.</p>
+									</div>
+
+									<div id="asig-teacher-no-results" class="state-view hidden">
+										<div class="state-icon"><i class="fa-solid fa-filter-circle-xmark"></i></div>
+										<h3>Sin coincidencias</h3>
+										<p>No se encontraron asignaciones para esta búsqueda.</p>
+									</div>
+								</div>
+
+								<div class="table-card-footer">
+									<span id="asig-teacher-counter" class="footer-counter-badge">Mostrando 0 registros</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</section>
+
+			</main>
+		</div>
+	</div>
+
+	<!-- Script Principal -->
+	<script src="app.js"></script>
+</body>
+
+</html>
